@@ -125,6 +125,8 @@ def rbf(X, Y, n_clusters=8):
         OUT_H = hstack((ones((n_samples, 1)), OUT_H))
 
         OUT_O = calc_out_o2(W, OUT_H)
+
+        d_e__d_out_o__ = - (Y - OUT_O)
         for i in range(n_samples):
             x = X[i, :]
             y = Y[i]
@@ -138,7 +140,9 @@ def rbf(X, Y, n_clusters=8):
             # Back propagation
             e = (y - out_o) ** 2 / 2
 
-            d_e__d_out_o = - (y - out_o)
+            # d_e__d_out_o = - (y - out_o)
+            d_e__d_out_o = d_e__d_out_o__[i]
+
             d_e__d_w = d_e__d_out_o * out_h  # O x 1
 
             t1 = (d_e__d_out_o * out_h * W * out_h)[1:]
