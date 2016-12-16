@@ -127,6 +127,8 @@ def rbf(X, Y, n_clusters=8):
         OUT_O = calc_out_o2(W, OUT_H)
 
         d_e__d_out_o__ = - (Y - OUT_O)
+        
+        d_e__d_w__ = np.inner(d_e__d_out_o__, OUT_H.T)
         for i in range(n_samples):
             x = X[i, :]
             y = Y[i]
@@ -143,7 +145,8 @@ def rbf(X, Y, n_clusters=8):
             # d_e__d_out_o = - (y - out_o)
             d_e__d_out_o = d_e__d_out_o__[i]
 
-            d_e__d_w = d_e__d_out_o * out_h  # O x 1
+            # d_e__d_w = d_e__d_out_o * out_h  # O x 1
+            # d_e__d_w = d_e__d_out_o__[i]  # O x 1
 
             t1 = (d_e__d_out_o * out_h * W * out_h)[1:]
             t2 = tile(x, (n_clusters, 1)) - C
@@ -153,11 +156,12 @@ def rbf(X, Y, n_clusters=8):
             t2 = d_e__d_out_o * W * t1 / (sigma ** 3) * out_h
             d_e__d_sigma = np.sum(t2)
 
-            update_w_sum += d_e__d_w
+            # update_w_sum += d_e__d_w
             update_c_sum += d_e__d_c
             update_sigma_sum += d_e__d_sigma
             total_error += e
 
+        update_w_sum = d_e__d_w__
         W -= learning_rate_w * update_w_sum / n_samples
         C -= learning_rate_c * update_c_sum / n_samples
         sigma -= learning_rate_sigma * update_sigma_sum / n_samples
