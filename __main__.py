@@ -118,13 +118,15 @@ def rbf(X, Y, n_clusters=8):
         total_error = 0
 
         G = gaussian_act(X, C, sigma)
+        G = hstack((ones((n_samples, 1)), G))
         for i in range(n_samples):
             x = X[i, :]
             y = Y[i]
 
             # Forward pass
             g = G[i, :]
-            out_h = hstack((1, g))  # H x 1
+            # out_h = hstack((1, g))  # H x 1
+            out_h = g
             out_o = calc_out_o(W, out_h)  # 1 x 1
 
             # Back propagation
