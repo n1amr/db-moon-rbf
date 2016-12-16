@@ -140,7 +140,24 @@ def rbf(X, Y, n_clusters=8):
         T2 = (X2 - C2)
         d_e__d_c__ = (T2 * tile(T1, (2, 1, 1)).transpose(1, 2, 0)).sum(axis=0)
 
-        for i in range(n_samples):
+        n_clusters = C.shape[0]
+        n_samples = X.shape[0]
+        X2 = tile(X, (n_clusters, 1, 1))
+        C2 = tile(C, (n_samples, 1, 1))
+        C2 = C2.transpose([1, 0, 2])
+        D = X2 - C2
+        N = norm(D, axis=2)
+        N = N.T
+
+        # T1 = hstack((0, norm(tile(x, (n_clusters, 1)) - C, axis=1) ** 2))
+        T1 = hstack((zeros((n_samples, 1)), N ** 2))
+        # T2 = d_e__d_out_o__ * W * T1 / (sigma ** 3) * OUT_H
+        T2 = (np.outer(d_e__d_out_o__, W) * T1 / (sigma ** 3))
+        d_e__d_sigma__ = T2.sum()
+
+        E = (Y - OUT_O) ** 2 / 2
+
+        for i in range(0):
             x = X[i, :]
             y = Y[i]
 
@@ -164,16 +181,18 @@ def rbf(X, Y, n_clusters=8):
             # d_e__d_c = (t2.T * t1).T
             # d_e__d_c = d_e__d_c__[i, :]
 
-            t1 = hstack((0, norm(tile(x, (n_clusters, 1)) - centroids, axis=1) ** 2))
-            t2 = d_e__d_out_o * W * t1 / (sigma ** 3) * out_h
-            d_e__d_sigma = np.sum(t2)
+            # t1 = hstack((0, norm(tile(x, (n_clusters, 1)) - centroids, axis=1) ** 2))
+            # t2 = d_e__d_out_o * W * t1 / (sigma ** 3) * out_h
+            # d_e__d_sigma = np.sum(t2)
 
             # update_w_sum += d_e__d_w
             # update_c_sum += d_e__d_c
+            # update_sigma_sum += d_e__d_sigma
 
-            update_sigma_sum += d_e__d_sigma
-            total_error += e
+            # total_error += e
 
+        total_error = E.sum()
+        update_sigma_sum = d_e__d_sigma__
         update_w_sum = d_e__d_w__
         update_c_sum = d_e__d_c__
         W -= learning_rate_w * update_w_sum / n_samples
