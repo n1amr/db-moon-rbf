@@ -83,8 +83,12 @@ def gaussian_act(X, C, sigma):
 #     return exp(-norm(tile(x, (n, 1)) - centroids, axis=1) ** 2 / (2 * sigma ** 2))
 
 
-def calc_out_o(weights, out_h):
-    return np.sum(weights * out_h)
+def calc_out_o2(W, OH):
+    return np.inner(W, OH)
+
+
+def calc_out_o(W, out_h):
+    return np.sum(W * out_h)
 
 
 def rbf(X, Y, n_clusters=8):
@@ -117,17 +121,19 @@ def rbf(X, Y, n_clusters=8):
         update_sigma_sum = 0
         total_error = 0
 
-        G = gaussian_act(X, C, sigma)
-        G = hstack((ones((n_samples, 1)), G))
+        OUT_H = gaussian_act(X, C, sigma)
+        OUT_H = hstack((ones((n_samples, 1)), OUT_H))
+
+        OUT_O = calc_out_o2(W, OUT_H)
         for i in range(n_samples):
             x = X[i, :]
             y = Y[i]
 
             # Forward pass
-            g = G[i, :]
+            out_h = OUT_H[i, :]
             # out_h = hstack((1, g))  # H x 1
-            out_h = g
-            out_o = calc_out_o(W, out_h)  # 1 x 1
+            # out_o = calc_out_o(W, out_h)  # 1 x 1
+            out_o = OUT_O[i]
 
             # Back propagation
             e = (y - out_o) ** 2 / 2
