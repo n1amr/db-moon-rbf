@@ -1,9 +1,8 @@
 import numpy as np
-from dask.array.ufunc import logical_and
 from matplotlib import pyplot as plt
-from numpy import hstack, vstack, sqrt, newaxis, where, logical_and, array, zeros, ones, exp, tile
-from numpy.random import rand, choice
+from numpy import hstack, vstack, sqrt, newaxis, where, array, zeros, ones, exp, tile, logical_and
 from numpy.linalg import norm
+from numpy.random import rand, choice
 
 
 def dbmoon(N=1000, d=1, r=10, w=6, plot=False):
@@ -26,19 +25,14 @@ def dbmoon(N=1000, d=1, r=10, w=6, plot=False):
         hstack((tmpl[:N, 0:1] + r, -tmpl[:N, 1:2] - d, ones((N, 1))))
     ))
 
-    if plot:
-        plot_data(data)
-        plt.axis((- r - w2, 2 * r + w2, -r - w2 - d, r + w2))
-        plt.show()
-
-    return data
+    return data[:, :2], data[:, -1]
 
 
-def plot_data(data):
-    idx_class_1 = where(data[:, 2] == 1)[0]
-    idx_class_0 = where(data[:, 2] == 0)[0]
-    plt.plot(data[idx_class_0, 0], data[idx_class_0, 1], 'b.',
-             data[idx_class_1, 0], data[idx_class_1, 1], 'r.')
+def plot_data(X, Y):
+    idx_class_0 = where(Y == 0)[0]
+    idx_class_1 = where(Y == 1)[0]
+    plt.plot(X[idx_class_0, 0], X[idx_class_0, 1], 'b.',
+             X[idx_class_1, 0], X[idx_class_1, 1], 'r.')
 
 
 def k_means_cluster(unlabeled_data, n_clusters):
@@ -78,17 +72,16 @@ def gaussian_act(x, centroids, sigma):
 
 
 def calc_out_o(weights, out_h):
-    # out_h = hstack((1, out_h))
     return np.sum(weights * out_h)
 
 
-def rbf(data, n_clusters=8):
+def rbf(X, Y, n_clusters=8):
     n_dim = 2
 
     # n_clusters = 2
 
-    X = data[:, :n_dim]
-    Y = data[:, -1]
+    # X = data[:, :n_dim]
+    # Y = data[:, -1]
 
     n_samples = X.shape[0]
 
@@ -103,18 +96,10 @@ def rbf(data, n_clusters=8):
 
     learning_rate_w = 1
     learning_rate_c = 1
-    learning_rate_sigma = 2
+    learning_rate_sigma = 1
 
     total_error = 0
-    # Forward pass
-    for it in range(1000):
-        if it % 10 == 0:
-            print('\niteration #{it}\n=============='.format(**locals()))
-            print('weights: {W}'.format(**locals()))
-            print('centroids: {C}'.format(**locals()))
-            print('sigma: {sigma}'.format(**locals()))
-            print('total_error: {total_error}'.format(**locals()))
-
+    for it in range(80):
         update_w_sum = 0
         update_c_sum = 0
         update_sigma_sum = 0
@@ -122,30 +107,29 @@ def rbf(data, n_clusters=8):
         for i in range(n_samples):
             x = X[i, :]
             y = Y[i]
-            out_h = gaussian_act(x, C, sigma)
-            out_h = hstack((1, out_h))  # H x 1
+
+            # Forward pass
+            out_h = hstack((1, gaussian_act(x, C, sigma)))  # H x 1
             out_o = calc_out_o(W, out_h)  # 1 x 1
+
+            # Back propagation
             e = (y - out_o) ** 2 / 2
 
-            d_e__d_w = - (y - out_o) * out_h  # O x 1
+            d_e__d_out_o = - (y - out_o)
+            d_e__d_w = d_e__d_out_o * out_h  # O x 1
 
-            t1 = (- (y - out_o) * out_h * W * out_h)[1:]
+            t1 = (d_e__d_out_o * out_h * W * out_h)[1:]
             t2 = tile(x, (n_clusters, 1)) - C
             d_e__d_c = (t2.T * t1).T
 
-            n = n_clusters
-            hstack((0, norm(tile(x, (n_clusters, 1)) - centroids, axis=1) ** 2))
-
-            t1 = hstack((0, norm(tile(x, (n, 1)) - centroids, axis=1) ** 2))
-            t2 = - (y - out_o) * W * t1 / (sigma ** 3) * out_h
+            t1 = hstack((0, norm(tile(x, (n_clusters, 1)) - centroids, axis=1) ** 2))
+            t2 = d_e__d_out_o * W * t1 / (sigma ** 3) * out_h
             d_e__d_sigma = np.sum(t2)
 
             update_w_sum += d_e__d_w
             update_c_sum += d_e__d_c
             update_sigma_sum += d_e__d_sigma
             total_error += e
-
-            # Back propagation
 
         W -= learning_rate_w * update_w_sum / n_samples
         C -= learning_rate_c * update_c_sum / n_samples
@@ -154,34 +138,19 @@ def rbf(data, n_clusters=8):
 
         total_error /= n_samples
 
-    plt.clf()
-    plot_data(data)
-    plt.plot(centroids.T[0], centroids.T[1], 'ko')
-    plt.show()
+        if it % 20 == 0:
+            print('\niteration #{it}\n=============='.format(**locals()))
+            print('weights: {W}'.format(**locals()))
+            print('centroids: {C}'.format(**locals()))
+            print('sigma: {sigma}'.format(**locals()))
+            print('total_error: {total_error}'.format(**locals()))
 
     return W, C, sigma
 
 
-def main():
-    n_samples = 1000
-    data = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
-    # data = array([
-    #     [0, 0.01, 0],
-    #     [0.01, 0, 0],
-    #     [0, -0.01, 0],
-    #     [-0.01, 0, 0],
-    #     [10, 10.01, 1],
-    #     [10.01, 10, 1],
-    #     [10, 9.99, 1],
-    #     [9.99, 10, 1],
-    # ])
-    W, C, sigma = rbf(data, n_clusters=10)
-
-    data = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
-    X = data[:, :2]
-    Y = data[:, -1]
-
+def test(X, Y, W, C, sigma):
     outs = []
+    misclassified_count = 0
     for i in range(X.shape[0]):
         x = X[i, :]
         y = Y[i]
@@ -189,9 +158,39 @@ def main():
         out_h = hstack((1, out_h))  # H x 1
         out_o = calc_out_o(W, out_h)  # 1 x 1
         outs.append(out_o)
-        out_o = 0 if out_o < 0.3 else 1 if out_o > 0.7 else 100000
-        if abs(out_o - y) > 0.1:
-            print('x = {x}, y = {y}, out = {out_o}'.format(**locals()))
+        output = 0 if out_o < 0.4 else 1 if out_o > 0.6 else None
+
+        if output is None or abs(output - y) > 0.1:
+            print('    misclassification: x = {x}, desired = {y}, output = {out_o}'.format(**locals()))
+            misclassified_count += 1
+    return misclassified_count
+
+
+def main():
+    np.random.seed(42)
+
+    n_samples = 1000
+
+    X_train, Y_train = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
+    X_test, Y_test = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
+
+    opt_min = 2
+    opt_max = n_samples // 100
+    while opt_max - opt_min > 0:
+        n_clusters = (opt_min + opt_max) // 2
+        print('using {n_clusters} nodes'.format(**locals()))
+
+        W, C, sigma = rbf(X_train, Y_train, n_clusters)
+        e = test(X_test, Y_test, W, C, sigma)
+
+        print('misclassification count = {e}'.format(**locals()))
+        if e == 0:
+            opt_max = n_clusters
+        elif e > 0:
+            opt_min = n_clusters + 1
+
+    opt = opt_max
+    print('optimal number of hidden nodes is {opt}'.format(**locals()))
 
 
 if __name__ == '__main__':
