@@ -87,9 +87,6 @@ def calc_out_o2(W, OH):
     return np.inner(W, OH)
 
 
-def calc_out_o(W, out_h):
-    return np.sum(W * out_h)
-
 
 def rbf(X, Y, n_clusters=8):
     n_dim = 2
@@ -116,109 +113,35 @@ def rbf(X, Y, n_clusters=8):
 
     total_error = 0
     for it in range(10000):
-        update_w_sum = 0
-        update_c_sum = 0
-        update_sigma_sum = 0
-        total_error = 0
+        out_h = hstack((ones((n_samples, 1)), gaussian_act(X, C, sigma)))
+        out_o = calc_out_o2(W, out_h)
 
-        OUT_H = gaussian_act(X, C, sigma)
-        OUT_H = hstack((ones((n_samples, 1)), OUT_H))
+        d_e__d_out_o = - (Y - out_o)
 
-        OUT_O = calc_out_o2(W, OUT_H)
+        update_w_sum = np.inner(d_e__d_out_o, out_h.T)
 
-        d_e__d_out_o__ = - (Y - OUT_O)
+        T1 = ((np.inner(d_e__d_out_o, out_h.T) * W * out_h)[:, 1:])
 
-        d_e__d_w__ = np.inner(d_e__d_out_o__, OUT_H.T)
-
-        T1 = ((np.inner(d_e__d_out_o__, OUT_H.T) * W * OUT_H)[:, 1:])
-
-        X2 = tile(X, (n_clusters, 1, 1))
         C2 = tile(C, (n_samples, 1, 1))
-        X2 = X2.transpose((1, 0, 2))
+        X2 = tile(X, (n_clusters, 1, 1)).transpose((1, 0, 2))
 
-        # T2 = ((X2 - C2).sum(axis=2))
         T2 = (X2 - C2)
-        d_e__d_c__ = (T2 * tile(T1, (2, 1, 1)).transpose(1, 2, 0)).sum(axis=0)
+        update_c_sum = (T2 * tile(T1, (2, 1, 1)).transpose(1, 2, 0)).sum(axis=0)
 
-        n_clusters = C.shape[0]
-        n_samples = X.shape[0]
         X2 = tile(X, (n_clusters, 1, 1))
-        C2 = tile(C, (n_samples, 1, 1))
-        C2 = C2.transpose([1, 0, 2])
+        C2 = tile(C, (n_samples, 1, 1)).transpose([1, 0, 2])
         D = X2 - C2
         N = norm(D, axis=2)
-        N = N.T
+        # N = N.T
 
-        # t1 = hstack((0, norm(tile(x, (n_clusters, 1)) - centroids, axis=1) ** 2))
-        # t2 = d_e__d_out_o * W * t1 / (sigma ** 3) * out_h
-        # d_e__d_sigma = np.sum(t2)
+        N = hstack((zeros((n_samples, 1)), N.T))
 
-        # i = 5
-        # t1 = hstack((0, norm(tile(X[i, :], (n_clusters, 1)) - centroids, axis=1) ** 2))
-        # t2 = d_e__d_out_o__[i] * W * t1 / (sigma ** 3) * OUT_H[i, :]
-        # d_e__d_sigma = np.sum(t2)
-
-        N = hstack((zeros((n_samples, 1)), N))
         T1 = N ** 2
-        T2 = (np.outer(d_e__d_out_o__, W) * T1 / (sigma ** 3) * OUT_H)
-        d_e__d_sigma__ = T2.sum()
+        T2 = (np.outer(d_e__d_out_o, W) * T1 / (sigma ** 3) * out_h)
+        update_sigma_sum = T2.sum()
 
-        # ss2 = 0
-        # ss = 0
-        # for i in range(1000):
-        #     t1 = hstack((0, norm(tile(X[i, :], (n_clusters, 1)) - centroids, axis=1) ** 2))
-        #     t2 = d_e__d_out_o__[i] * W * t1 / (sigma ** 3) * OUT_H[i, :]
-        #     d_e__d_sigma = np.sum(t2)
-        #     b = all(T1[i, :] - t1 == 0)
-        #     if not b:
-        #         print(b)
-        #         print(d_e__d_sigma - np.sum(T2[i, :]) == 0)
-        #     ss2 += np.sum(T2[i, :])
-        #     ss += np.sum(t2)
+        total_error = ((Y - out_o) ** 2 / 2).sum()
 
-        # import IPython;
-        # IPython.embed()
-
-        E = (Y - OUT_O) ** 2 / 2
-
-        for i in range(0):
-            x = X[i, :]
-            y = Y[i]
-
-            # Forward pass
-            out_h = OUT_H[i, :]
-            # out_h = hstack((1, g))  # H x 1
-            # out_o = calc_out_o(W, out_h)  # 1 x 1
-            out_o = OUT_O[i]
-
-            # Back propagation
-            e = (y - out_o) ** 2 / 2
-
-            # d_e__d_out_o = - (y - out_o)
-            d_e__d_out_o = d_e__d_out_o__[i]
-
-            # d_e__d_w = d_e__d_out_o * out_h  # O x 1
-            # d_e__d_w = d_e__d_out_o__[i]  # O x 1
-
-            # t1 = (d_e__d_out_o * out_h * W * out_h)[1:]
-            # t2 = tile(x, (n_clusters, 1)) - C
-            # d_e__d_c = (t2.T * t1).T
-            # d_e__d_c = d_e__d_c__[i, :]
-
-            # t1 = hstack((0, norm(tile(x, (n_clusters, 1)) - centroids, axis=1) ** 2))
-            # t2 = d_e__d_out_o * W * t1 / (sigma ** 3) * out_h
-            # d_e__d_sigma = np.sum(t2)
-
-            # update_w_sum += d_e__d_w
-            # update_c_sum += d_e__d_c
-            # update_sigma_sum += d_e__d_sigma
-
-            # total_error += e
-
-        total_error = E.sum()
-        update_sigma_sum = d_e__d_sigma__
-        update_w_sum = d_e__d_w__
-        update_c_sum = d_e__d_c__
         W -= learning_rate_w * update_w_sum / n_samples
         C -= learning_rate_c * update_c_sum / n_samples
         sigma -= learning_rate_sigma * update_sigma_sum / n_samples
@@ -226,7 +149,7 @@ def rbf(X, Y, n_clusters=8):
 
         total_error /= n_samples
 
-        if it % 20 == 0:
+        if it % 100 == 0:
             print('\niteration #{it}\n=============='.format(**locals()))
             print('weights: {W}'.format(**locals()))
             print('centroids: {C}'.format(**locals()))
@@ -239,17 +162,19 @@ def rbf(X, Y, n_clusters=8):
 def test(X, Y, W, C, sigma):
     outs = []
     misclassified_count = 0
+
+    out_h = hstack((ones((X.shape[0], 1)), gaussian_act(X, C, sigma)))
+    out_o = calc_out_o2(W, out_h)
+
+
     for i in range(X.shape[0]):
         x = X[i, :]
         y = Y[i]
-        out_h = gaussian_act(x, C, sigma)
-        out_h = hstack((1, out_h))  # H x 1
-        out_o = calc_out_o(W, out_h)  # 1 x 1
-        outs.append(out_o)
-        output = 0 if out_o < 0.4 else 1 if out_o > 0.6 else None
+        out = out_o[i]
+        output = 0 if out < 0.4 else 1 if out > 0.6 else None
 
         if output is None or abs(output - y) > 0.1:
-            print('    misclassification: x = {x}, desired = {y}, output = {out_o}'.format(**locals()))
+            print('    misclassification: x = {x}, desired = {y}, output = {out}'.format(**locals()))
             misclassified_count += 1
     return misclassified_count
 
@@ -266,9 +191,9 @@ def main():
     print('using {n_clusters} nodes'.format(**locals()))
 
     W, C, sigma = rbf(X_train, Y_train, n_clusters)
-    # e = test(X_test, Y_test, W, C, sigma)
+    e = test(X_test, Y_test, W, C, sigma)
 
-    # print('misclassification count = {e}'.format(**locals()))
+    print('misclassification count = {e}'.format(**locals()))
 
 
 if __name__ == '__main__':
