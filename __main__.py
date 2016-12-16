@@ -66,9 +66,21 @@ def k_means_cluster(unlabeled_data, n_clusters):
     return centroids
 
 
-def gaussian_act(x, centroids, sigma):
-    n = centroids.shape[0]
-    return exp(-norm(tile(x, (n, 1)) - centroids, axis=1) ** 2 / (2 * sigma ** 2))
+def gaussian_act(X, C, sigma):
+    n_clusters = C.shape[0]
+    n_samples = X.shape[0]
+    X2 = tile(X, (n_clusters, 1, 1))
+    C2 = tile(C, (n_samples, 1, 1))
+    C2 = C2.transpose([1, 0, 2])
+    D = X2 - C2
+    N = norm(D, axis=2)
+    N = N.T
+    return exp(-N ** 2 / (2 * sigma ** 2))
+
+
+# def gaussian_act2(x. centroids, sigma):
+#     n = centroids.shape[0]
+#     return exp(-norm(tile(x, (n, 1)) - centroids, axis=1) ** 2 / (2 * sigma ** 2))
 
 
 def calc_out_o(weights, out_h):
@@ -99,17 +111,20 @@ def rbf(X, Y, n_clusters=8):
     learning_rate_sigma = 1
 
     total_error = 0
-    for it in range(80):
+    for it in range(1):
         update_w_sum = 0
         update_c_sum = 0
         update_sigma_sum = 0
         total_error = 0
+
+        G = gaussian_act(X, C, sigma)
         for i in range(n_samples):
             x = X[i, :]
             y = Y[i]
 
             # Forward pass
-            out_h = hstack((1, gaussian_act(x, C, sigma)))  # H x 1
+            g = G[i, :]
+            out_h = hstack((1, g))  # H x 1
             out_o = calc_out_o(W, out_h)  # 1 x 1
 
             # Back propagation
@@ -174,23 +189,13 @@ def main():
     X_train, Y_train = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
     X_test, Y_test = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
 
-    opt_min = 2
-    opt_max = n_samples // 100
-    while opt_max - opt_min > 0:
-        n_clusters = (opt_min + opt_max) // 2
-        print('using {n_clusters} nodes'.format(**locals()))
+    n_clusters = 10
+    print('using {n_clusters} nodes'.format(**locals()))
 
-        W, C, sigma = rbf(X_train, Y_train, n_clusters)
-        e = test(X_test, Y_test, W, C, sigma)
+    W, C, sigma = rbf(X_train, Y_train, n_clusters)
+    # e = test(X_test, Y_test, W, C, sigma)
 
-        print('misclassification count = {e}'.format(**locals()))
-        if e == 0:
-            opt_max = n_clusters
-        elif e > 0:
-            opt_min = n_clusters + 1
-
-    opt = opt_max
-    print('optimal number of hidden nodes is {opt}'.format(**locals()))
+    # print('misclassification count = {e}'.format(**locals()))
 
 
 if __name__ == '__main__':
