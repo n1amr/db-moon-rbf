@@ -110,12 +110,12 @@ def rbf(X, Y, n_clusters=8):
             d_max = max(d_max, norm(c1 - c2))
     sigma = d_max / sqrt(2 * n_clusters)
 
-    learning_rate_w = 1
-    learning_rate_c = 1
-    learning_rate_sigma = 1
+    learning_rate_w = 0.2
+    learning_rate_c = 0.00001
+    learning_rate_sigma = 0.6
 
     total_error = 0
-    for it in range(1):
+    for it in range(10000):
         update_w_sum = 0
         update_c_sum = 0
         update_sigma_sum = 0
@@ -149,11 +149,35 @@ def rbf(X, Y, n_clusters=8):
         N = norm(D, axis=2)
         N = N.T
 
-        # T1 = hstack((0, norm(tile(x, (n_clusters, 1)) - C, axis=1) ** 2))
-        T1 = hstack((zeros((n_samples, 1)), N ** 2))
-        # T2 = d_e__d_out_o__ * W * T1 / (sigma ** 3) * OUT_H
-        T2 = (np.outer(d_e__d_out_o__, W) * T1 / (sigma ** 3))
+        # t1 = hstack((0, norm(tile(x, (n_clusters, 1)) - centroids, axis=1) ** 2))
+        # t2 = d_e__d_out_o * W * t1 / (sigma ** 3) * out_h
+        # d_e__d_sigma = np.sum(t2)
+
+        # i = 5
+        # t1 = hstack((0, norm(tile(X[i, :], (n_clusters, 1)) - centroids, axis=1) ** 2))
+        # t2 = d_e__d_out_o__[i] * W * t1 / (sigma ** 3) * OUT_H[i, :]
+        # d_e__d_sigma = np.sum(t2)
+
+        N = hstack((zeros((n_samples, 1)), N))
+        T1 = N ** 2
+        T2 = (np.outer(d_e__d_out_o__, W) * T1 / (sigma ** 3) * OUT_H)
         d_e__d_sigma__ = T2.sum()
+
+        # ss2 = 0
+        # ss = 0
+        # for i in range(1000):
+        #     t1 = hstack((0, norm(tile(X[i, :], (n_clusters, 1)) - centroids, axis=1) ** 2))
+        #     t2 = d_e__d_out_o__[i] * W * t1 / (sigma ** 3) * OUT_H[i, :]
+        #     d_e__d_sigma = np.sum(t2)
+        #     b = all(T1[i, :] - t1 == 0)
+        #     if not b:
+        #         print(b)
+        #         print(d_e__d_sigma - np.sum(T2[i, :]) == 0)
+        #     ss2 += np.sum(T2[i, :])
+        #     ss += np.sum(t2)
+
+        # import IPython;
+        # IPython.embed()
 
         E = (Y - OUT_O) ** 2 / 2
 
@@ -238,7 +262,7 @@ def main():
     X_train, Y_train = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
     X_test, Y_test = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
 
-    n_clusters = 10
+    n_clusters = 8
     print('using {n_clusters} nodes'.format(**locals()))
 
     W, C, sigma = rbf(X_train, Y_train, n_clusters)
