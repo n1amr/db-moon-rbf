@@ -1,3 +1,5 @@
+__author__ = 'Amr Alaa'
+
 import numpy as np
 from matplotlib import pyplot as plt
 from numpy import hstack, vstack, sqrt, newaxis, where, array, zeros, ones, exp, tile, logical_and
