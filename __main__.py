@@ -135,12 +135,12 @@ def rbf(X, Y, n_clusters=8):
 
         total_error /= n_samples
 
-        if it % 20 == 0:
-            print('\niteration #{it}\n=============='.format(**locals()))
-            print('weights: {W}'.format(**locals()))
-            print('centroids: {C}'.format(**locals()))
-            print('sigma: {sigma}'.format(**locals()))
-            print('total_error: {total_error}'.format(**locals()))
+        if (it + 1) % 20 == 0:
+            print('\niteration #{it}\n=============='.format(it=it + 1))
+            print('weights = {W}'.format(**locals()))
+            print('centroids = \n{C}'.format(**locals()))
+            print('sigma = {sigma}'.format(**locals()))
+            print('total error = {total_error}'.format(**locals()))
 
     return W, C, sigma
 
@@ -176,6 +176,8 @@ def main():
 
     opt_min = 2
     opt_max = n_samples // 100
+    ERROR_THRESHOLD = 0.02
+    MISSRATE_THRESHOLD = 0.02
     while opt_max - opt_min > 0:
         n_clusters = (opt_min + opt_max) // 2
         print('using {n_clusters} nodes'.format(**locals()))
@@ -184,17 +186,23 @@ def main():
         miss_count, error = test(X_test, Y_test, W, C, sigma)
 
         print('misclassification count = {miss_count}'.format(**locals()))
-        if miss_count == 0:
+        if error <= ERROR_THRESHOLD and miss_count / n_samples < MISSRATE_THRESHOLD:
             opt_max = n_clusters
-        elif miss_count > 0:
+            opt_W, opt_C, opt_sigma = (W, C, sigma)
+            opt_miss_count, opt_error = (miss_count, error)
+        else:
             opt_min = n_clusters + 1
 
     opt = opt_max
 
+    print('\n\nsummary:\n' + '=' * 10)
+    print('optimal weights = {opt_W}'.format(**locals()))
+    print('optimal centroids = \n{opt_C}'.format(**locals()))
+    print('optimal sigma = {opt_sigma}'.format(**locals()))
     print('\n' + '=' * 10)
-    print('optimal number of hidden nodes is {opt}'.format(**locals()))
-    print('classification error = {error:2.2f}%'.format(error=error * 100))
-    print('misclassification ratio on test set = {miss_count}/{n_samples}'.format(**locals()))
+    print('optimal number of hidden layer nodes is {opt}'.format(**locals()))
+    print('classification error = {error:2.2f}%'.format(error=opt_error * 100))
+    print('misclassification ratio on test set = {opt_miss_count}/{n_samples}'.format(**locals()))
 
 
 if __name__ == '__main__':
