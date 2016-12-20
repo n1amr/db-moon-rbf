@@ -7,7 +7,7 @@ from numpy.linalg import norm
 from numpy.random import rand, choice
 
 
-def dbmoon(N=1000, d=1, r=10, w=6, plot=False):
+def dbmoon(N=1000, d=1, r=10, w=6):
     N //= 2
     N1 = 10 * N
     w2 = w / 2
@@ -80,11 +80,6 @@ def calc_out_o(weights, out_h):
 def rbf(X, Y, n_clusters=8):
     n_dim = 2
 
-    # n_clusters = 2
-
-    # X = data[:, :n_dim]
-    # Y = data[:, -1]
-
     n_samples = X.shape[0]
 
     # Initialization
@@ -111,14 +106,14 @@ def rbf(X, Y, n_clusters=8):
             y = Y[i]
 
             # Forward pass
-            out_h = hstack((1, gaussian_act(x, C, sigma)))  # H x 1
-            out_o = calc_out_o(W, out_h)  # 1 x 1
+            out_h = hstack((1, gaussian_act(x, C, sigma)))
+            out_o = calc_out_o(W, out_h)
 
             # Back propagation
             e = (y - out_o) ** 2 / 2
 
             d_e__d_out_o = - (y - out_o)
-            d_e__d_w = d_e__d_out_o * out_h  # O x 1
+            d_e__d_w = d_e__d_out_o * out_h
 
             t1 = (d_e__d_out_o * out_h * W * out_h)[1:]
             t2 = tile(x, (n_clusters, 1)) - C
@@ -153,19 +148,22 @@ def rbf(X, Y, n_clusters=8):
 def test(X, Y, W, C, sigma):
     outs = []
     misclassified_count = 0
-    for i in range(X.shape[0]):
+    error = 0
+    m = X.shape[0]
+    for i in range(m):
         x = X[i, :]
         y = Y[i]
         out_h = gaussian_act(x, C, sigma)
-        out_h = hstack((1, out_h))  # H x 1
-        out_o = calc_out_o(W, out_h)  # 1 x 1
+        out_h = hstack((1, out_h))
+        out_o = calc_out_o(W, out_h)
+        error += (out_o - y) ** 2
         outs.append(out_o)
         output = 0 if out_o < 0.4 else 1 if out_o > 0.6 else None
 
         if output is None or abs(output - y) > 0.1:
             print('    misclassification: x = {x}, desired = {y}, output = {out_o}'.format(**locals()))
             misclassified_count += 1
-    return misclassified_count
+    return misclassified_count, error / (2 * m)
 
 
 def main():
@@ -173,8 +171,8 @@ def main():
 
     n_samples = 1000
 
-    X_train, Y_train = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
-    X_test, Y_test = dbmoon(n_samples, d=1, r=10, w=6, plot=False)
+    X_train, Y_train = dbmoon(n_samples, d=1, r=10, w=6)
+    X_test, Y_test = dbmoon(n_samples, d=1, r=10, w=6)
 
     opt_min = 2
     opt_max = n_samples // 100
@@ -183,16 +181,20 @@ def main():
         print('using {n_clusters} nodes'.format(**locals()))
 
         W, C, sigma = rbf(X_train, Y_train, n_clusters)
-        e = test(X_test, Y_test, W, C, sigma)
+        miss_count, error = test(X_test, Y_test, W, C, sigma)
 
-        print('misclassification count = {e}'.format(**locals()))
-        if e == 0:
+        print('misclassification count = {miss_count}'.format(**locals()))
+        if miss_count == 0:
             opt_max = n_clusters
-        elif e > 0:
+        elif miss_count > 0:
             opt_min = n_clusters + 1
 
     opt = opt_max
+
+    print('\n' + '=' * 10)
     print('optimal number of hidden nodes is {opt}'.format(**locals()))
+    print('classification error = {error:2.2f}%'.format(error=error * 100))
+    print('misclassification ratio on test set = {miss_count}/{n_samples}'.format(**locals()))
 
 
 if __name__ == '__main__':
